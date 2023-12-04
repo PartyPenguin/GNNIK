@@ -10,7 +10,6 @@ from sapien.utils.viewer import Viewer
 
 from graphs.graph_from_obs import graph_from_state
 from graphs.graph_structure import OnlyRobotGraphStructure
-from graph_learning import GCNEncoder
 
 ASSET_PATH = "../assets"
 DATASET_FILE = "dataset/your_dataset.h5"
@@ -74,7 +73,7 @@ class RobotController:
         pred = model(graph.x, graph.edge_index).detach().cpu().numpy()
 
         next_qpos = current_qpos.reshape(current_qpos.shape[0], 1).squeeze() + pred[:, 0]
-        next_qvel = pred[:,1]
+        next_qvel = pred[:, 1]
         return next_qpos, next_qvel
 
     def follow_path(self, result):
@@ -92,6 +91,14 @@ class RobotController:
 
 
 class RobotSimulator:
+    """
+    Create a simulator for the robot.
+    Provides methods to setup the scene and follow a path.
+
+    Args:
+        robot_urdf: The path to the robot urdf file.
+    """
+
     def __init__(self, robot_urdf):
         self.engine = sapien.Engine()
         self.renderer = sapien.SapienRenderer()
@@ -208,6 +215,10 @@ class RobotSimulator:
 
 
 class DatasetGenerator:
+    """
+    Generate a dataset of observations and actions for the robot.
+    """
+
     def __init__(self, robot_simulator: RobotSimulator, robot_planner: RobotPlanner):
         self.robot_simulator = robot_simulator
         self.robot_planner = robot_planner

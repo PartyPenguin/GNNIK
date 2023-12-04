@@ -1,23 +1,41 @@
 import os.path as osp
 import shutil
 # add path to src
-import sys
 from typing import List
 
 import h5py
 import numpy as np
 import torch
+from numpy import ndarray
+from torch_geometric.data import Dataset
+from tqdm import tqdm
 
 from graphs.graph_from_obs import graph_from_state
 from graphs.graph_structure import OnlyRobotGraphStructure
-from torch_geometric.data import Dataset
-from tqdm import tqdm
 
 dataset_path = "dataset/your_dataset.h5"
 graph_structure = OnlyRobotGraphStructure()
 
 
-def extract_feature_from_obs(obs, actions, i):
+def extract_feature_from_obs(obs: ndarray, actions: ndarray, i: int) -> (ndarray, ndarray):
+    """
+    Extract node features and actions from observation. Each step in the trajectory has one observation which contains
+    the joint positions, velocities, tcp pose, and goal position. The observations and actions are extracted and added
+    to the corresponding node features.
+
+    For example the joint positions are a 7 dimensional vector. They get transposed such that each joint node gets its
+    own feature vector. The same is done for the joint velocities, tcp pose and goal position.
+
+    Args:
+        obs: observation [1, 28]
+        actions: actions
+        i: index of the observation
+
+    Returns:
+        feature: node features [num_nodes, num_features]
+        action: action
+
+    """
     robot_joint_pos = obs[:, :7]  # 7 dim joint positions
     robot_joint_vel = obs[:, 7:14]  # 7 dim joint velocities
     robot_tcp_pose = obs[:, 14:21]  # 7 dim tcp pose
@@ -100,7 +118,7 @@ class RobotGraph(Dataset):
                 # For each sequence, create a graph
                 for i in range(len(obs)):
                     edge_lists = graph_structure.get_edges()
-                    state, action = extract_feature_from_obs(obs, actions[:,:7], i)
+                    state, action = extract_feature_from_obs(obs, actions[:, :7], i)
                     self.save_graph(state, edge_lists, action, total_graphs)
                     total_graphs += 1
 

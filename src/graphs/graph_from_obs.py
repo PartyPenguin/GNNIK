@@ -1,11 +1,10 @@
-from numpy import ndarray
+from collections import namedtuple
+
 import numpy as np
 import torch
-from torch_geometric.data import HeteroData
 import torch_geometric.transforms as T
-from collections import namedtuple
-import torch
 from torch_geometric.data import Data
+from torch_geometric.data import HeteroData
 
 EdgeStruct = namedtuple("EdgeStruct", ["list", "types"])
 
@@ -64,17 +63,17 @@ def hetero_graph_from_state(state, edges):
 
 
 def graph_from_state(
-    state: list,
-    edges: ndarray,
-    actions: list = [],
+        state: list,
+        edges: EdgeStruct,
+        actions: list = [],
 ):
     """
-    Creates a graph from a state and a set of edges.
+    Creates a homogenous graph from a state and a set of edges.
 
     Args:
-        state (list): A list of floats representing the state of the graph.
+        state (list): A list of floats representing the state of the graph. Also known as features.
         edges (EdgeStruct): An EdgeStruct object containing the edges of the graph.
-        actions (list, optional): A list of floats representing the actions of the graph. Defaults to [].
+        actions (list, optional): A list of floats representing the actions of the graph. Defaults to []. Also known as labels.
 
     Returns:
         Data: A PyTorch Geometric Data object representing the graph.
@@ -83,7 +82,6 @@ def graph_from_state(
     assert len(edges.types) == 1
 
     # Create nodes
-
     x = torch.tensor(np.array(state), dtype=torch.float)
 
     # Add actions to the graph if they exist
