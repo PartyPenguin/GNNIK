@@ -99,6 +99,7 @@ class OnlyRobotGraphStructure(GraphStructure):
             4: self.node_types[0],  # Link4
             5: self.node_types[0],  # Link5
             6: self.node_types[0],  # Link6
+            # 7: self.node_types[0],  # Link7 (Gripper)
         }
         # Connect each link to the next link
         self.edge_lists = {0: [[i, i + 1] for i in range(6)]}

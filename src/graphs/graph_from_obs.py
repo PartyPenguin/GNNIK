@@ -5,6 +5,7 @@ import torch
 import torch_geometric.transforms as T
 from torch_geometric.data import Data
 from torch_geometric.data import HeteroData
+from torch_geometric.typing import OptTensor
 
 EdgeStruct = namedtuple("EdgeStruct", ["list", "types"])
 
@@ -63,39 +64,49 @@ def hetero_graph_from_state(state, edges):
 
 
 def graph_from_state(
-        state: list,
+        node_feature: list,
         edges: EdgeStruct,
-        actions: list = [],
+        edge_feature: list = None,
+        target_feature=None,
 ):
     """
     Creates a homogenous graph from a state and a set of edges.
 
     Args:
-        state (list): A list of floats representing the state of the graph. Also known as features.
+        node_feature (list): A list of floats representing the state of the graph. Also known as features.
+        edge_feature (list, optional): A list of floats representing the actions of the graph. Defaults to []. Also known as labels.
         edges (EdgeStruct): An EdgeStruct object containing the edges of the graph.
-        actions (list, optional): A list of floats representing the actions of the graph. Defaults to []. Also known as labels.
+        target_feature (list, optional): A list of floats representing the target features of the graph. Defaults to None.
 
     Returns:
-        Data: A PyTorch Geometric Data object representing the graph.
+        Data: A PyTorch Geometric Data object representing the graph. This object includes node features (x), edge indices (edge_index), edge attributes (edge_attr), and optionally target features (y) if provided.
     """
+    edge_attr: OptTensor = None
+
+    # Initialize y as None. It will be used to store target features if they exist.
+    y = None
+
     # Assert that only one type of edge is passed in
-    assert len(edges.types) == 1
+    assert len(edges.types) == 1, "Only one type of edge is expected."
 
-    # Create nodes
-    x = torch.tensor(np.array(state), dtype=torch.float)
+    # Convert node features to a tensor
+    x = torch.tensor(np.array(node_feature), dtype=torch.float)
 
-    # Add actions to the graph if they exist
-    if len(actions) > 0:
-        y = torch.tensor(actions, dtype=torch.float)
+    # Convert edge features to a tensor
+    if edge_feature is not None:
+        edge_attr = torch.tensor(np.array(edge_feature), dtype=torch.float)
 
-    # Create edges
+    # If target features are provided, convert them to a tensor
+    if target_feature is not None:
+        y = torch.tensor(target_feature, dtype=torch.float)
+
+    # Convert edge list to a tensor
     edge_index = torch.tensor(edges.list[0], dtype=torch.long).t().contiguous()
 
-    if len(actions) > 0:
-        graph = Data(x=x, edge_index=edge_index, y=y)
-    else:
-        graph = Data(x=x, edge_index=edge_index)
+    # Create a PyTorch Geometric Data object representing the graph
+    graph = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y)
 
+    # Convert the graph to an undirected graph
     graph = T.ToUndirected()(graph)
 
     return graph
