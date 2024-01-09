@@ -205,9 +205,6 @@ def plot_goal_pos(dataset):
     plt.show()
 
 
-# %%
-
-
 def main():
     writer = SummaryWriter("../runs/test")
     transform = T.NormalizeFeatures()
@@ -224,7 +221,6 @@ def main():
     train_dataset = Subset(dataset, train_indices)
     # plot_goal_pos(train_dataset)
     test_dataset = Subset(dataset, test_indices)
-
 
     # Normalize node features in the training dataset
     # train_dataset = normalize_node_features(train_dataset)

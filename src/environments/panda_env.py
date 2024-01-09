@@ -10,7 +10,7 @@ class PandaEnv(SapienEnv):
     def __init__(self):
         self.init_qpos = [0, 0.19634954084936207, 0.0, -2.617993877991494,
                           0.0, 2.941592653589793, 0.7853981633974483, 0, 0]
-        super().__init__(control_freq=2000, timestep=0.01)
+        super().__init__(control_freq=20, timestep=0.01)
 
         self.robot = self.get_articulation('panda')
         self.end_effector = self.robot.get_links()[8]

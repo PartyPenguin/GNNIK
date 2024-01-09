@@ -13,9 +13,9 @@ from graph_learning import MLP
 graph_structure = OnlyRobotGraphStructure()
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-SCALER_PARAMS = joblib.load("models/scaler_params.pkl")
-MEAN = SCALER_PARAMS['mean']
-STD = SCALER_PARAMS['std']
+# SCALER_PARAMS = joblib.load("models/scaler_params.pkl")
+# MEAN = SCALER_PARAMS['mean']
+# STD = SCALER_PARAMS['std']
 
 
 def save_to_file(obs, actions, id):
@@ -55,9 +55,9 @@ def get_model_action(obs, model: torch.nn.Module, env: PandaEnv):
     graph = graph_from_state(features, graph_structure.get_edges()).to(DEVICE)
 
     # normalize node feature
-    graph.x = graph.x.cpu()
-    graph.x = (graph.x - MEAN) / STD
-    graph.x = graph.x.to(DEVICE)
+    # graph.x = graph.x.cpu()
+    # graph.x = (graph.x - MEAN) / STD
+    # graph.x = graph.x.to(DEVICE)
 
     pred = model(graph).detach().cpu().numpy()
 
@@ -107,7 +107,7 @@ def main():
     all_mp_actions = [[] for _ in range(7)]  # Initialize list to store joint positions
 
     obs = env.get_obs()
-    target_pose = [0.3, 0.3, 0.3, 0, 1, 0, 0]
+    target_pose = [0.3, 0.3, 0.3, 1, 0, 0, 0]
     env.cube.set_pose(sapien.Pose(target_pose[:3]))
 
     # Get motion planner result
@@ -148,7 +148,7 @@ def main():
 
             ax.set_ylabel(f'Joint {i + 1}')
         axs[-1].set_xlabel('Time step')
-        plt.pause(0.01)  # Small delay to allow plot to update
+        plt.pause(0.001)  # Small delay to allow plot to update
 
         obs, reward, done, info = env.step(model_actions)
         print(obs)
