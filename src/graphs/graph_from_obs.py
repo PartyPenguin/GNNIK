@@ -94,11 +94,17 @@ def graph_from_state(
 
     # Convert edge features to a tensor
     if edge_feature is not None:
-        edge_attr = torch.tensor(np.array(edge_feature), dtype=torch.float)
+        if isinstance(edge_feature, torch.Tensor):
+            edge_attr = edge_feature.clone().detach()
+        else:
+            edge_attr = torch.tensor(edge_feature, dtype=torch.float)
 
     # If target features are provided, convert them to a tensor
     if target_feature is not None:
-        y = torch.tensor(target_feature, dtype=torch.float)
+        if isinstance(target_feature, torch.Tensor):
+            y = target_feature.clone().detach()
+        else:
+            y = torch.tensor(target_feature, dtype=torch.float)
 
     # Convert edge list to a tensor
     edge_index = torch.tensor(edges.list[0], dtype=torch.long).t().contiguous()

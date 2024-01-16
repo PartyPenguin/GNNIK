@@ -1,4 +1,3 @@
-import os
 import os.path as osp
 import shutil
 # add path to src
@@ -14,7 +13,7 @@ from tqdm import tqdm
 from graphs.graph_from_obs import graph_from_state
 from graphs.graph_structure import OnlyRobotGraphStructure
 
-DATASET_PATH = "dataset/your_dataset.h5"
+DATASET_PATH = "dataset/raw/experiment.h5"
 GRAPH_STRUCTURE = OnlyRobotGraphStructure()
 
 
@@ -53,51 +52,25 @@ def extract_feature_from_obs(obs: ndarray, actions: ndarray = None, i: int = 0) 
             np.tile(goal_pos[i], (robot_joint_pos[i].shape[0], 1)).T,
         ]
     ).T
-    # Repeat the last joint position and velocity for the gripper node
-    # robot_joint = np.concatenate((robot_joint, robot_joint[-1][None, :]), axis=0)
-    # robot_joint_next = np.vstack(
-    #     [
-    #         robot_joint_pos[i],
-    #         robot_joint_vel[i],
-    #         # np.tile(
-    #         #     goal_to_ee[i], (robot_joint_pos[i].shape[0], 1)
-    #         # ).T,
-    #         # np.tile(goal_pos[i], (robot_joint_pos[i].shape[0], 1)).T,
-    #     ]
-    # ).T
-    # # Repeat the last joint position and velocity for the gripper node
-    # robot_joint_next = np.concatenate((robot_joint_next, robot_joint_next[-1][None, :]), axis=0)
+
     node_feature = []
     node_feature.extend(robot_joint)
     target_feature = []
     target_feature.extend(actions[i])
 
-    # # Add actions to the graph
-    # if actions is not None:
-    #     edge_feature = actions[i]
-    # else:
-    #     edge_feature = []
     edge_feature = None
 
     return node_feature, edge_feature, target_feature
 
 
 class RobotGraph(Dataset):
-    def __init__(self, root, mask=None, transform=None, pre_transform=None):
-        self.mask = mask
-        self.num_links = 7
-        super(RobotGraph, self).__init__(
-            root=root, transform=transform, pre_transform=pre_transform
-        )
-
-        # Count number of files in processed directory with data prefix
-        self.total_data = len(
-            [
-                name
-                for name in os.listdir(self.processed_dir)
-                if name.startswith("data")
-            ]
-        )
+    def __init__(self, root: str, transform=None, pre_transform=None):
+        self.raw_name = ["experiment.h5"]  # Define raw_name here
+        super().__init__(root=root, transform=transform, pre_transform=pre_transform)
+        self.total_data = len(torch.load(osp.join(self.processed_dir, "data.pt"))[0])
+        # Load the dataset into memory
+        self.node_features, self.edge_features, self.target_features = torch.load(
+            osp.join(self.processed_dir, "data.pt"))
 
     @property
     def raw_dir(self) -> str:
@@ -105,34 +78,28 @@ class RobotGraph(Dataset):
 
     @property
     def processed_dir(self) -> str:
-        if self.mask is None:
-            return osp.join(self.root, "processed")
-        return osp.join(self.root, "processed", self.mask)
+        return osp.join(self.root, "processed")
 
     @property
     def raw_file_names(self) -> List[str]:
-        return ["experiment.h5"]  # Replace with actual raw file names if needed
+        return self.raw_name
 
     @property
     def processed_file_names(self) -> List[str]:
-        return ["data_0.pt"]
+        return ["data.pt"]
 
     @property
     def num_output_features(self) -> int:
-        return 12
+        return 8
 
     def download(self):
         # write file to raw_dir
         shutil.copy(DATASET_PATH, self.raw_paths[0])
 
-    def save_graph(self, node_feature, edge_feature, target_feature, total_graphs):
-        data = graph_from_state(node_feature, GRAPH_STRUCTURE.get_edges(), edge_feature, target_feature)
-        torch.save(
-            data,
-            osp.join(self.processed_dir, "data_%d.pt" % (total_graphs)),
-        )
-
     def process(self):
+        node_features = []
+        edge_features = []
+        target_features = []
         with h5py.File(self.raw_paths[0], "r") as f:
             total_graphs = 0
             data_group = f
@@ -145,10 +112,56 @@ class RobotGraph(Dataset):
 
                 # For each sequence, create a graph
                 for i in range(len(obs) - 1):
-                    edge_lists = GRAPH_STRUCTURE.get_edges()
-                    node_feature, edge_feature, target_feature = extract_feature_from_obs(obs, actions, i )
-                    self.save_graph(node_feature, edge_feature, target_feature, total_graphs)
+                    node_feature, edge_feature, target_feature = extract_feature_from_obs(obs, actions, i)
+                    node_features.append(torch.from_numpy(np.asarray(node_feature)))
+                    # edge_features.append(torch.from_numpy(edge_feature))
+                    target_features.append(torch.from_numpy(np.asarray(target_feature)))
                     total_graphs += 1
+
+        node_features = torch.stack(node_features)
+        # edge_features = torch.stack(edge_features)
+        target_features = torch.stack(target_features)
+        torch.save((node_features, None, target_features), osp.join(self.processed_dir, "data.pt"))
+
+    def get(self, idx):
+        edge_list = GRAPH_STRUCTURE.get_edges()
+        # Access the required data from the loaded dataset
+        node_feature = self.node_features[idx]
+        # edge_feature = self.edge_features[idx]
+        target_feature = self.target_features[idx]
+        data = graph_from_state(node_feature, edge_list, None, target_feature)
+        return data
+
+    def update_dataset(self, new_file_path):
+        # Save the original raw file path
+        original_raw_path = self.raw_paths[0]
+
+        # Update the raw file path to the new file
+        self.raw_name = [new_file_path]
+
+        # Load the existing dataset
+        existing_graph_list = torch.load(osp.join(self.processed_dir, "data.pt"))
+
+        # Process the new data into graphs
+        self.process()
+
+        # Load the new graphs
+        new_graph_list = torch.load(osp.join(self.processed_dir, "data.pt"))
+
+        # Create a list to store the merged graphs
+        merged_graph_list = [None, None, None]
+        # Append the new graphs to the existing dataset
+        for i in range(3):
+            if existing_graph_list[i] is None:
+                merged_graph_list[i] = None
+            else:
+                merged_graph_list[i] = torch.cat([existing_graph_list[i], new_graph_list[i]], dim=0)
+
+        # Save the updated dataset
+        torch.save(merged_graph_list, osp.join(self.processed_dir, "data.pt"))
+
+        # Restore the original raw file path
+        self.raw_paths[0] = original_raw_path
 
     def len(self):
         return self.total_data
@@ -156,10 +169,6 @@ class RobotGraph(Dataset):
     @property
     def num_nodes(self):
         return len(GRAPH_STRUCTURE.nodes)
-
-    def get(self, idx):
-        data = torch.load(osp.join(self.processed_dir, "data_%d.pt" % (idx)))
-        return data
 
 # dataset = RobotGraph(root="dataset")
 #

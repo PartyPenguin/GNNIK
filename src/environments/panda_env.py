@@ -10,7 +10,7 @@ class PandaEnv(SapienEnv):
     def __init__(self):
         self.init_qpos = [0, 0.19634954084936207, 0.0, -2.617993877991494,
                           0.0, 2.941592653589793, 0.7853981633974483, 0, 0]
-        super().__init__(control_freq=20, timestep=0.01)
+        super().__init__(control_freq=20, timestep=0.1)
 
         self.robot = self.get_articulation('panda')
         self.end_effector = self.robot.get_links()[8]
@@ -20,7 +20,7 @@ class PandaEnv(SapienEnv):
         self.active_joints = self.robot.get_active_joints()
         self.cube: sapien.core.Articulation = self.get_actor('cube')
         # Randomize initial position of the joints given the joint limits
-        self.init_qpos = [np.random.default_rng().uniform(low=ql, high=qu) for ql, qu in self.robot.get_qlimits()]
+        # self.init_qpos = [np.random.default_rng().uniform(low=ql, high=qu) for ql, qu in self.robot.get_qlimits()]
 
         # The arm is controlled by the internal velocity drive
         for joint in self.active_joints[:5]:
@@ -44,7 +44,7 @@ class PandaEnv(SapienEnv):
 
         # cube
         builder: sapien.core.ActorBuilder = self._scene.create_actor_builder()
-        builder.add_box_visual(half_size=[0.02, 0.02, 0.02], color=[1, 0, 0])
+        builder.add_box_visual(half_size=[0.08, 0.02, 0.02], color=[1, 0, 0])
         cube = builder.build_static(name='cube')
 
         # robot

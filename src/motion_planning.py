@@ -50,20 +50,17 @@ class MotionPlanner:
                 self.viewer.render()
 
     def move_to_pose_with_RRTConnect(self, pose):
-        result = self.planner.plan(pose, self.env.robot.get_qpos(), time_step=self.env.timestep)
+        result = self.planner.plan(pose, self.env.robot.get_qpos(), time_step=self.env.timestep, planning_time=2)
         if result['status'] != "Success":
-            print(result['status'])
             return -1
         return result
 
     def move_to_pose_with_screw(self, pose):
         result = self.planner.plan_screw(pose, self.env.robot.get_qpos(), time_step=self.env.timestep)
         if result['status'] != "Success":
-            result = self.planner.plan(pose, self.env.robot.get_qpos(), time_step=self.env.timestep)
+            result = self.planner.plan(pose, self.env.robot.get_qpos(), time_step=self.env.timestep, planning_time=2)
             if result['status'] != "Success":
-                print(result['status'])
                 return -1
-            return -1
         return result
 
     def move_to_pose(self, pose, with_screw):
@@ -71,3 +68,10 @@ class MotionPlanner:
             return self.move_to_pose_with_screw(pose)
         else:
             return self.move_to_pose_with_RRTConnect(pose)
+
+    def check_for_collision(self, qpos=None):
+        self_col_result = self.planner.check_for_self_collision(qpos=qpos)
+
+        if self_col_result:
+            return True
+        return False
